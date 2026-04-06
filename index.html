@@ -316,7 +316,29 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 .fc a:hover{color:var(--cream)}
 .fbot{background:var(--dark);padding:1.2rem 4rem;border-top:1px solid rgba(196,168,130,.2);text-align:center;font-size:.73rem;color:var(--clay);letter-spacing:.1em}
 
-/* ── ADMIN MOBILE TABBAR ── */
+/* ── CATALOGUE MODE — contact card replaces cart ── */
+.cat-mode-badge{font-size:.62rem;letter-spacing:.15em;background:var(--moss);color:#fff;padding:.2rem .6rem;border-radius:2px;margin-left:.6rem;vertical-align:middle;text-transform:uppercase}
+.contact-card{display:none;position:fixed;inset:0;background:rgba(62,42,20,.6);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.contact-card.on{display:flex}
+.contact-card-box{background:var(--warm);border-radius:10px;width:420px;max-width:95vw;padding:2.5rem;box-shadow:0 24px 80px rgba(0,0,0,.25);text-align:center}
+.contact-card-box h3{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;margin-bottom:.5rem}
+.contact-card-box h3 em{font-style:italic;color:var(--terra)}
+.contact-card-box p{font-size:.85rem;color:var(--bark);margin-bottom:1.8rem;line-height:1.6}
+.contact-card-links{display:flex;flex-direction:column;gap:.8rem;margin-bottom:1.5rem}
+.cc-link{display:flex;align-items:center;gap:.8rem;background:var(--cream);border-radius:6px;padding:.9rem 1.1rem;text-decoration:none;color:var(--bark-dark);font-size:.88rem;transition:background .2s}
+.cc-link:hover{background:var(--sand)}
+.cc-link svg{color:var(--terra);flex-shrink:0}
+.cc-link span{font-weight:500}
+.cc-close{background:none;border:1.5px solid var(--clay);color:var(--bark);padding:.65rem 1.5rem;font-family:'Jost',sans-serif;font-size:.75rem;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all .3s}
+.cc-close:hover{background:var(--sand)}
+/* contactar button that replaces add-to-cart in catalogue mode */
+.acb-contact{background:var(--moss);color:#fff;border:none;padding:.5rem 1rem;font-family:'Jost',sans-serif;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all .3s;white-space:nowrap}
+.acb-contact:hover{background:#5a7050}
+/* mode toggle in admin settings */
+.mode-toggle{display:flex;gap:.5rem;margin-top:.5rem}
+.mode-opt{flex:1;padding:.75rem;border:2px solid var(--ab);background:none;color:var(--am);font-family:'Jost',sans-serif;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all .25s;text-align:center}
+.mode-opt.sel.store{border-color:var(--ag);background:rgba(240,192,64,.12);color:var(--ag)}
+.mode-opt.sel.cat{border-color:var(--moss);background:rgba(122,140,110,.15);color:#9dc490}
 .admin-tabbar{display:none;overflow-x:auto;-webkit-overflow-scrolling:touch;background:var(--as);border-bottom:1px solid var(--ab);flex-shrink:0;white-space:nowrap;padding:0}
 .atb-btn{display:inline-flex;align-items:center;gap:.3rem;padding:.75rem 1rem;font-family:'Jost',sans-serif;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--am);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s}
 .atb-btn.on{color:var(--ag);border-bottom-color:var(--ag)}
@@ -795,11 +817,34 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Entrar
     </button>
     <div class="uav" id="uav" style="display:none" onclick="toggleUM()"></div>
-    <button class="nav-icon-btn cart-btn" onclick="toggleCart()">
+    <button class="nav-icon-btn cart-btn" id="cartNavBtn" onclick="handleCartBtn()">
       🛒 <span class="cart-label">Cesta</span> <span class="nav-badge" id="cc">0</span>
     </button>
   </div>
 </nav>
+
+<!-- CONTACT CARD (catalogue mode) -->
+<div class="contact-card" id="contactCard" onclick="if(event.target===this)closeContactCard()">
+  <div class="contact-card-box">
+    <h3>Contáctanos para <em>pedir</em></h3>
+    <p>Estamos en modo catálogo. Para hacer un pedido contacta directamente por cualquiera de estas vías y te atendemos encantadas 🌿</p>
+    <div class="contact-card-links">
+      <a class="cc-link" id="ccPhone" href="tel:XXXXXXX">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span id="ccPhoneTxt">XXXXXXX</span>
+      </a>
+      <a class="cc-link" id="ccIgLink" href="https://instagram.com/ritagamar" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/></svg>
+        <span id="ccIgTxt">@ritagamar</span>
+      </a>
+      <a class="cc-link" id="ccEmailLink" href="/cdn-cgi/l/email-protection#e0888f8c81a09289948187818d8192ce838f8d">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span id="ccEmailTxt"><span class="__cf_email__" data-cfemail="9df5f2f1fcddeff4e9fcfafcf0fcefb3fef2f0">[email&#160;protected]</span></span>
+      </a>
+    </div>
+    <button class="cc-close" onclick="closeContactCard()">Cerrar</button>
+  </div>
+</div>
 
 <!-- ══ MAIN PAGE ══ -->
 <div id="mainPage">
@@ -842,6 +887,10 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
       </div>
       <div>
         <form class="cform" id="cform" onsubmit="submitCustomOrder(event)">
+          <!-- Login notice — shown only when not logged in -->
+          <div id="formLoginNotice" style="background:#fdf0ef;border:1px solid #f0b8b4;color:#a33;padding:.8rem 1rem;border-radius:4px;font-size:.82rem;display:none">
+            ⚠ Necesitas <button type="button" onclick="openAuth()" style="background:none;border:none;color:#a33;text-decoration:underline;cursor:pointer;font-size:.82rem;font-family:inherit">iniciar sesión</button> para enviar un pedido personalizado.
+          </div>
           <div class="cfrow">
             <div class="cfg"><label>Tu nombre</label><input type="text" id="fName" placeholder="Nombre" required></div>
             <div class="cfg"><label>Email</label><input type="email" id="fEmail" placeholder="tu@email.com" required></div>
@@ -851,7 +900,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
           </div>
           <div class="cfg"><label>Tu mensaje</label><textarea id="fMsg" rows="5" placeholder="Cuéntame qué tienes en mente…" required></textarea></div>
           <button type="submit" class="sub-btn" id="subBtn">Enviar pedido personalizado →</button>
-          <div class="fsuccess" id="fsuc">✦ ¡Mensaje recibido! Te escribo en menos de 24 horas. Gracias por confiar en Ritagamar 🌿</div>
+          <div class="fsuccess" id="fsuc"></div>
         </form>
       </div>
     </div>
@@ -915,7 +964,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 <div class="moverlay" id="authOv" onclick="authOvClick(event)">
   <div class="amodal">
     <div id="s1">
-      <div class="mhd"><div><h2>Bienvenida/o a <em>Ritagamar</em></h2><p>Tu espacio de joyería artesanal</p></div><button class="mx" onclick="closeAuth()">✕</button></div>
+      <div class="mhd"><div><h2>Bienvenida a <em>Ritagamar</em></h2><p>Tu espacio de joyería artesanal</p></div><button class="mx" onclick="closeAuth()">✕</button></div>
       <div class="mbd">
         <div class="mtabs"><button class="mtab on" id="tl" onclick="switchTab('l')">Entrar</button><button class="mtab" id="tr" onclick="switchTab('r')">Crear cuenta</button></div>
         <div class="apanel on" id="pl">
@@ -1142,9 +1191,18 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
         <div class="apg" id="apg"></div>
       </div>
       <div class="asec" id="a-orders">
-        <div class="atitle">Pedidos</div><div class="asub-txt">Todos los pedidos recibidos</div>
-        <div style="background:var(--as);border:1px solid var(--ab);border-radius:8px;padding:1.5rem;margin-top:1rem">
-          <div class="atable-wrap"><table class="atable"><thead><tr><th>Fecha</th><th>Cliente</th><th>Email</th><th>Tipo</th><th>Dirección / Mensaje</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <div class="ash">
+          <div><div class="atitle">Pedidos</div><div class="asub-txt">Todos los pedidos recibidos · haz clic en uno para ver el detalle completo</div></div>
+        </div>
+        <!-- Search bar -->
+        <div style="margin-bottom:1rem">
+          <input id="orderSearch" type="text" placeholder="Buscar por nombre, email, referencia, estado…"
+            style="width:100%;padding:.7rem 1rem;border:1.5px solid var(--ab);background:rgba(255,255,255,.05);font-family:'Jost',sans-serif;font-size:.85rem;color:var(--at);border-radius:4px;outline:none;transition:border-color .3s"
+            oninput="filterOrders(this.value)" onfocus="this.style.borderColor='var(--ag)'" onblur="this.style.borderColor='var(--ab)'">
+        </div>
+        <div style="background:var(--as);border:1px solid var(--ab);border-radius:8px;padding:1.5rem;margin-top:0">
+          <div id="ordersCount" style="font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;color:var(--am);margin-bottom:.8rem"></div>
+          <div class="atable-wrap"><table class="atable"><thead><tr><th>Ref.</th><th>Fecha</th><th>Cliente</th><th>Email</th><th>Tipo</th><th>Mensaje</th><th>Total</th><th>Estado</th><th></th></tr></thead>
           <tbody id="allOrders"></tbody></table></div>
         </div>
       </div>
@@ -1155,11 +1213,23 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
         <div class="agalgrid" id="agalgrid"></div>
       </div>
       <div class="asec" id="a-users">
-        <div class="atitle">Usuarias</div><div class="asub-txt">Cuentas registradas</div>
+        <div class="atitle">Usuarias</div><div class="asub-txt">Cuentas registradas · los administradores no se pueden eliminar</div>
         <div class="aul" id="aul"></div>
       </div>
       <div class="asec" id="a-settings">
-        <div class="atitle">Ajustes de la tienda</div><div class="asub-txt">Todo se guarda en Supabase y se aplica al instante</div>
+        <div class="atitle">Ajustes de la tienda</div><div class="asub-txt">Todo se guarda en Supabase y se aplica al instante a todos los usuarios</div>
+        <div class="settbox">
+          <h4>Modo de la tienda</h4>
+          <p style="font-size:.78rem;color:var(--am);margin-bottom:.8rem;line-height:1.6">
+            <strong style="color:var(--ag)">Tienda</strong> — cesta, pagos y pedidos activos.<br>
+            <strong style="color:#9dc490">Catálogo</strong> — sin cesta ni pagos. Los clientes ven los productos y contactan directamente.
+          </p>
+          <div class="mode-toggle">
+            <button class="mode-opt store" id="modeStore" onclick="setStoreMode('store')">🛒 Modo Tienda</button>
+            <button class="mode-opt cat" id="modeCat" onclick="setStoreMode('catalogue')">📋 Modo Catálogo</button>
+          </div>
+          <div id="modeStatus" style="font-size:.72rem;color:var(--am);margin-top:.6rem"></div>
+        </div>
         <div class="settbox">
           <h4>Bizum — número de pago</h4>
           <div class="sfg"><label>Tu número de Bizum</label><input id="sBizum" placeholder="XXXXXXX (tu número de teléfono)"></div>
@@ -1260,7 +1330,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 
 <div class="toast" id="toastEl"></div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ══════════════════════════════════════════
 // CONFIG — claves divididas para evitar scraping simple
 // ══════════════════════════════════════════
@@ -1288,7 +1358,7 @@ let checkoutStep=1;
 let deliveryInfo={};
 let bizumNumber='XXXXXXX', shippingCost=3.95;
 
-let heroPanels=[
+let storeMode='store'; // 'store' | 'catalogue' — loaded from Supabase settings
   {label:'Pendientes artesanales',link:'#catalogo',img:null,icon:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M12 12v8M9 16l3 3 3-3"/></svg>'},
   {label:'Pulseras naturales',link:'#catalogo',img:null,icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'},
   {label:'Ediciones limitadas',link:'#catalogo',img:null,icon:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
@@ -1360,8 +1430,10 @@ function applySettings(m){
   if(m.cta2_link){const el=document.getElementById('heroCta2');if(el)el.href=m.cta2_link;}
   if(m.bizum_number){ bizumNumber=m.bizum_number; }
   if(m.shipping_cost){ shippingCost=parseFloat(m.shipping_cost)||3.95; }
+  if(m.store_mode){ storeMode=m.store_mode; }
   if(m.hero_panels){ try{const p=JSON.parse(m.hero_panels);if(Array.isArray(p))heroPanels=p;}catch(e){} }
   renderHeroPanels();
+  applyStoreMode(storeMode);
   // fill form
   f('sHeroEye',m.hero_eyebrow); f('sHeroEm',m.hero_title_em); f('sHeroSub',m.hero_sub);
   f('sHeroDeco',m.hero_deco); f('sCta1Txt',m.cta1_txt); f('sCta1Link',m.cta1_link);
@@ -1387,6 +1459,7 @@ async function saveSettings(){
     {key:'bizum_number',value:document.getElementById('sBizum').value},
     {key:'shipping_cost',value:document.getElementById('sShipping').value},
     {key:'hero_panels',value:JSON.stringify(heroPanels)},
+    {key:'store_mode',value:storeMode},
   ];
   // Save ALL rows regardless of whether they're empty
   for(const r of rows){
@@ -1457,6 +1530,75 @@ function renderFavPage(){
     grid.appendChild(c); setTimeout(()=>{ c.classList.add('vis'); },40+i*60);
   });
 }
+
+// ══════════════════════════════════════════
+// STORE / CATALOGUE MODE
+// ══════════════════════════════════════════
+function applyStoreMode(mode){
+  storeMode=mode||'store';
+  const isCat=storeMode==='catalogue';
+
+  // Nav cart button
+  const cartBtn=document.getElementById('cartNavBtn');
+  if(cartBtn){
+    if(isCat){
+      cartBtn.innerHTML='📋 <span class="cart-label">Catálogo</span>';
+      cartBtn.style.borderColor='var(--moss)';
+      cartBtn.style.color='var(--moss)';
+    } else {
+      cartBtn.innerHTML='🛒 <span class="cart-label">Cesta</span> <span class="nav-badge'+(cart.length?' on':'')+'" id="cc">'+cart.length+'</span>';
+      cartBtn.style.borderColor='';cartBtn.style.color='';
+    }
+  }
+
+  // Contact form section — hide in catalogue mode (direct contact card instead)
+  const contacto=document.getElementById('contacto');
+  if(contacto) contacto.style.display=isCat?'none':'';
+
+  // Re-render products to show correct button
+  renderProducts();
+
+  // Update contact card with current settings
+  updateContactCard();
+
+  // Admin UI
+  const ms=document.getElementById('modeStore'), mc=document.getElementById('modeCat');
+  const mst=document.getElementById('modeStatus');
+  if(ms&&mc){
+    ms.classList.toggle('sel',!isCat); mc.classList.toggle('sel',isCat);
+    if(mst) mst.textContent=isCat?'✓ Modo Catálogo activo — cesta desactivada para todos los usuarios':'✓ Modo Tienda activo — cesta y pagos habilitados';
+  }
+}
+
+function updateContactCard(){
+  // Sync contact card links with current settings
+  const phone=bizumNumber!=='XXXXXXX'?bizumNumber:(document.getElementById('contactEmail')?.textContent||'');
+  const ig=document.getElementById('contactIg')?.textContent||'@ritagamar';
+  const email=document.getElementById('contactEmail')?.textContent||'hola@ritagamar.com';
+  const ph=document.getElementById('ccPhoneTxt'); if(ph) ph.textContent=phone;
+  const pha=document.getElementById('ccPhone'); if(pha) pha.href='tel:'+phone.replace(/\s/g,'');
+  const igt=document.getElementById('ccIgTxt'); if(igt) igt.textContent=ig;
+  const iga=document.getElementById('ccIgLink'); if(iga) iga.href='https://instagram.com/'+ig.replace('@','');
+  const emt=document.getElementById('ccEmailTxt'); if(emt) emt.textContent=email;
+  const ema=document.getElementById('ccEmailLink'); if(ema) ema.href='mailto:'+email;
+}
+
+async function setStoreMode(mode){
+  storeMode=mode;
+  await sb.from('settings').upsert({key:'store_mode',value:mode},{onConflict:'key'});
+  applyStoreMode(mode);
+  toast(mode==='catalogue'?'📋 Modo Catálogo activado — cesta deshabilitada':'🛒 Modo Tienda activado — cesta habilitada');
+}
+
+function handleCartBtn(){
+  if(storeMode==='catalogue'){
+    updateContactCard();
+    document.getElementById('contactCard').classList.add('on');
+  } else {
+    toggleCart();
+  }
+}
+function closeContactCard(){document.getElementById('contactCard').classList.remove('on');}
 
 // ══════════════════════════════════════════
 // HERO PANELS
@@ -1537,6 +1679,14 @@ async function doReg(){
   const {data,error}=await sb.from('site_users').insert({name,email,password:hashed,role:'user'}).select().single();
   btn.disabled=false;btn.textContent='Crear cuenta →';
   if(error){showErr('rErr','Error al crear la cuenta.');return;}
+  // Send confirmation email via Edge Function (if configured)
+  try{
+    await fetch(`${_u}/functions/v1/send-welcome-email`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+_k},
+      body:JSON.stringify({name,email})
+    });
+  }catch(e){ /* Email is optional — don't block registration if it fails */ }
   loginAs({id:data.id,name:data.name,email:data.email,role:'user'});
 }
 async function loginAs(u){
@@ -1544,7 +1694,7 @@ async function loginAs(u){
   closeAuth();refreshNav();renderHeroPanels();
   document.getElementById('awelcome').textContent=u.name;
   if(u.role!=='admin'){ await loadFavouritesDB(); updateFavBadge(); renderProducts(); }
-  toast(`✦ ¡Bienvenida/o, ${u.name}! 🌿`);
+  toast(`✦ ¡Bienvenida, ${u.name}! 🌿`);
 }
 function logout(){
   currentUser=null;pending=null;localStorage.removeItem('rg_session');
@@ -1564,7 +1714,17 @@ function refreshNav(){
     document.getElementById('umRole').className='um-role'+(currentUser.role==='admin'?' adm':'');
     document.getElementById('adminBtn').style.display=currentUser.role==='admin'?'flex':'none';
     document.getElementById('awelcome').textContent=currentUser.name;
-  } else{lb.style.display='flex';av.style.display='none';document.getElementById('adminBtn').style.display='none';}
+    // Hide login notice, pre-fill form with user data
+    const notice=document.getElementById('formLoginNotice');
+    if(notice) notice.style.display='none';
+    const fn=document.getElementById('fName'); if(fn&&!fn.value) fn.value=currentUser.name;
+    const fe=document.getElementById('fEmail'); if(fe&&!fe.value) fe.value=currentUser.email;
+  } else {
+    lb.style.display='flex';av.style.display='none';document.getElementById('adminBtn').style.display='none';
+    // Show login notice on contact form
+    const notice=document.getElementById('formLoginNotice');
+    if(notice) notice.style.display='block';
+  }
 }
 function ciIn(el,i){el.value=el.value.replace(/\D/g,'').slice(-1);el.classList.toggle('ok',el.value!=='');const all=document.querySelectorAll('.ci');if(el.value&&i<5)all[i+1].focus();if([...all].every(x=>x.value))doTFA();}
 function ciKey(e,i){if(e.key==='Backspace'){const all=document.querySelectorAll('.ci');if(!all[i].value&&i>0){all[i-1].value='';all[i-1].classList.remove('ok');all[i-1].focus();}}}
@@ -1629,9 +1789,10 @@ function goToStep3(){goToStep(3);}
 async function confirmBizum(){
   const subtotal=cart.reduce((s,p)=>s+p.price,0);
   const total=subtotal+shippingCost;
-  const ref='RG'+Date.now().toString().slice(-6);
-  // Save order to Supabase
+  // Reuse the ref already shown to the user in step 2/3
+  const ref=document.getElementById('bizumConcept').textContent.replace('Ritagamar – ','').trim()||('RG'+Date.now().toString().slice(-6));
   await sb.from('orders').insert({
+    ref,
     customer_name:deliveryInfo.name,
     customer_email:currentUser?currentUser.email:'',
     interest:'compra_directa',
@@ -1639,10 +1800,9 @@ async function confirmBizum(){
     items:cart.map(p=>({id:p.id,name:p.name,price:p.price})),
     total,status:'pendiente_bizum'
   });
-  // Show success
-  document.getElementById('orderConfirmBox').innerHTML=`<strong>Ref:</strong> ${ref}<br><strong>Total:</strong> ${total.toFixed(2).replace('.',',')} €<br><strong>Número Bizum:</strong> ${bizumNumber}<br><strong>Envío a:</strong> ${deliveryInfo.addr}, ${deliveryInfo.cp} ${deliveryInfo.city}`;
+  document.getElementById('orderConfirmBox').innerHTML=`<strong>Referencia:</strong> ${ref}<br><strong>Total:</strong> ${total.toFixed(2).replace('.',',')} €<br><strong>Número Bizum:</strong> ${bizumNumber}<br><strong>Envío a:</strong> ${deliveryInfo.addr}, ${deliveryInfo.cp} ${deliveryInfo.city}`;
   goToStep(4);
-  cart=[]; updateCart(); localStorage.removeItem('rg_cart');
+  cart=[]; saveCart(); updateCart();
 }
 
 function openCustomOrder(){
@@ -1695,15 +1855,15 @@ function renderOrders(orders){
   const fmt=d=>new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
   const typeLabel=t=>t==='compra_directa'?`<span class="sb s-new">Compra</span>`:`<span class="sb s-proc">Personalizado</span>`;
   const statuses=['nuevo','pendiente_bizum','en_proceso','enviado','completado','cancelado'];
-  // store orders globally for detail modal
   window._adminOrders=orders;
   const row=o=>`<tr class="od-clickable" onclick="openOrderDetail(${o.id})">
-    <td>${fmt(o.created_at)}</td>
+    <td style="font-family:monospace;font-size:.75rem;color:var(--ag);white-space:nowrap">${o.ref||'—'}</td>
+    <td style="font-size:.78rem">${fmt(o.created_at)}</td>
     <td><strong style="color:var(--at)">${o.customer_name}</strong></td>
     <td style="font-size:.75rem">${o.customer_email||'—'}</td>
     <td>${typeLabel(o.interest)}</td>
-    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;color:var(--am)">${o.message||'—'}</td>
-    <td>${o.total?parseFloat(o.total).toFixed(2)+' €':'—'}</td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;color:var(--am)">${o.message||'—'}</td>
+    <td style="white-space:nowrap">${o.total?parseFloat(o.total).toFixed(2)+' €':'—'}</td>
     <td onclick="event.stopPropagation()">
       <select class="order-status-sel" onchange="updateOrderStatus(${o.id},this.value)">
         ${statuses.map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
@@ -1712,7 +1872,8 @@ function renderOrders(orders){
     <td onclick="event.stopPropagation()"><button class="order-del-btn" onclick="deleteOrder(${o.id})">✕</button></td>
   </tr>`;
   const dashRow=o=>`<tr class="od-clickable" onclick="openOrderDetail(${o.id})">
-    <td>${fmt(o.created_at)}</td>
+    <td style="font-family:monospace;font-size:.72rem;color:var(--ag)">${o.ref||'—'}</td>
+    <td style="font-size:.78rem">${fmt(o.created_at)}</td>
     <td>${o.customer_name}</td>
     <td>${typeLabel(o.interest)}</td>
     <td>${o.total?parseFloat(o.total).toFixed(2)+' €':'—'}</td>
@@ -1720,8 +1881,45 @@ function renderOrders(orders){
       ${statuses.map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
     </select></td>
   </tr>`;
-  document.getElementById('dashOrders').innerHTML=orders.slice(0,5).map(dashRow).join('')||'<tr><td colspan="5" style="color:var(--am);text-align:center;padding:1.5rem">Sin pedidos aún</td></tr>';
-  document.getElementById('allOrders').innerHTML=orders.map(row).join('')||'<tr><td colspan="8" style="color:var(--am);text-align:center;padding:1.5rem">Sin pedidos aún</td></tr>';
+  document.getElementById('dashOrders').innerHTML=orders.slice(0,5).map(dashRow).join('')||'<tr><td colspan="6" style="color:var(--am);text-align:center;padding:1.5rem">Sin pedidos aún</td></tr>';
+  const allHtml=orders.map(row).join('');
+  document.getElementById('allOrders').innerHTML=allHtml||'<tr><td colspan="9" style="color:var(--am);text-align:center;padding:1.5rem">Sin pedidos aún</td></tr>';
+  const el=document.getElementById('ordersCount');
+  if(el) el.textContent=`${orders.length} pedido${orders.length!==1?'s':''}`;
+}
+
+function filterOrders(q){
+  const orders=window._adminOrders||[];
+  const ql=q.toLowerCase().trim();
+  const filtered=ql?orders.filter(o=>
+    (o.ref||'').toLowerCase().includes(ql)||
+    (o.customer_name||'').toLowerCase().includes(ql)||
+    (o.customer_email||'').toLowerCase().includes(ql)||
+    (o.status||'').toLowerCase().includes(ql)||
+    (o.message||'').toLowerCase().includes(ql)||
+    (o.interest||'').toLowerCase().includes(ql)
+  ):orders;
+  const fmt=d=>new Date(d).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+  const typeLabel=t=>t==='compra_directa'?`<span class="sb s-new">Compra</span>`:`<span class="sb s-proc">Personalizado</span>`;
+  const statuses=['nuevo','pendiente_bizum','en_proceso','enviado','completado','cancelado'];
+  const row=o=>`<tr class="od-clickable" onclick="openOrderDetail(${o.id})">
+    <td style="font-family:monospace;font-size:.75rem;color:var(--ag);white-space:nowrap">${o.ref||'—'}</td>
+    <td style="font-size:.78rem">${fmt(o.created_at)}</td>
+    <td><strong style="color:var(--at)">${o.customer_name}</strong></td>
+    <td style="font-size:.75rem">${o.customer_email||'—'}</td>
+    <td>${typeLabel(o.interest)}</td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;color:var(--am)">${o.message||'—'}</td>
+    <td style="white-space:nowrap">${o.total?parseFloat(o.total).toFixed(2)+' €':'—'}</td>
+    <td onclick="event.stopPropagation()">
+      <select class="order-status-sel" onchange="updateOrderStatus(${o.id},this.value)">
+        ${statuses.map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s.replace(/_/g,' ')}</option>`).join('')}
+      </select>
+    </td>
+    <td onclick="event.stopPropagation()"><button class="order-del-btn" onclick="deleteOrder(${o.id})">✕</button></td>
+  </tr>`;
+  document.getElementById('allOrders').innerHTML=filtered.map(row).join('')||`<tr><td colspan="9" style="color:var(--am);text-align:center;padding:1.5rem">Sin resultados para "${q}"</td></tr>`;
+  const el=document.getElementById('ordersCount');
+  if(el) el.textContent=ql?`${filtered.length} de ${orders.length} pedidos`:(`${orders.length} pedido${orders.length!==1?'s':''}`);
 }
 
 function openOrderDetail(id){
@@ -1742,6 +1940,7 @@ function openOrderDetail(id){
   }catch(e){}
 
   document.getElementById('odBd').innerHTML=`
+    <div class="od-field"><div class="od-lbl">Referencia</div><div class="od-val" style="font-family:monospace;font-size:1.1rem;color:var(--ag);letter-spacing:.1em">${o.ref||'Sin referencia'}</div></div>
     <div class="od-field"><div class="od-lbl">Fecha</div><div class="od-val">${fmt(o.created_at)}</div></div>
     <div class="od-field"><div class="od-lbl">Cliente</div><div class="od-val"><strong>${o.customer_name}</strong>${o.customer_email?`<br><span style="color:var(--am);font-size:.82rem">${o.customer_email}</span>`:''}</div></div>
     <div class="od-field"><div class="od-lbl">Tipo</div><div class="od-val">${o.interest==='compra_directa'?'🛒 Compra directa':'✉ Pedido personalizado'}</div></div>
@@ -1847,7 +2046,16 @@ function renderAdmUsers(list){
       <div class="aua ${u.role==='admin'?'adm':''}">${u.name[0]}</div>
       <div class="aui"><div class="aun">${u.name}</div><div class="aue">${u.email}</div></div>
       <span class="arole ${u.role==='admin'?'r-adm':'r-usr'}">${u.role==='admin'?'Admin':'Cliente'}</span>
+      ${u.role!=='admin'?`<button class="order-del-btn" style="margin-left:.5rem" onclick="deleteUser(${u.id},'${u.name}')">✕ Eliminar</button>`:''}
     </div>`).join(''):'<div style="color:var(--am);padding:1rem;font-size:.82rem">Sin usuarias aún.</div>';
+}
+
+async function deleteUser(id, name){
+  if(!confirm(`¿Eliminar la cuenta de ${name}? Esta acción no se puede deshacer.`)) return;
+  const {error}=await sb.from('site_users').delete().eq('id',id);
+  if(error){toast('Error al eliminar usuaria','err');return;}
+  toast(`✦ Cuenta de ${name} eliminada`);
+  await loadAdminData();
 }
 
 // ══════════════════════════════════════════
@@ -1879,7 +2087,10 @@ function renderProducts(){
         <div class="pname">${p.name}</div>
         <div class="pdesc">${p.desc}</div>
         <div class="pfoot"><span class="pprice">${p.price} €</span>
-          <button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>
+          ${storeMode==='catalogue'
+            ?`<button class="acb-contact" onclick="event.stopPropagation();updateContactCard();document.getElementById('contactCard').classList.add('on')">Contactar</button>`
+            :`<button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>`
+          }
         </div>
       </div>`;
     g.appendChild(c);setTimeout(()=>{c.classList.add('vis');observer.observe(c);},40+i*60);
@@ -1927,7 +2138,10 @@ function renderLbox(p){
       ${p.stock?`<div class="lbox-meta-row"><span class="lbox-meta-lbl">Stock</span><span class="lbox-meta-val">${p.stock} disponibles</span></div>`:''}
     </div>
     <div class="lbox-btns">
-      <button class="lbox-acb" onclick="addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'✓ En tu cesta':'Añadir a la cesta'}</button>
+      ${storeMode==='catalogue'
+        ?`<button class="lbox-acb" style="background:var(--moss)" onclick="closeLbox();updateContactCard();document.getElementById('contactCard').classList.add('on')">📋 Contactar para pedir</button>`
+        :`<button class="lbox-acb" onclick="addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'✓ En tu cesta':'Añadir a la cesta'}</button>`
+      }
       <button class="lbox-fav${isFav?' on':''}" onclick="toggleFav(${p.id})">${isFav?'♥ Quitar de favoritos':'♡ Guardar en favoritos'}</button>
     </div>`;
 }
@@ -1968,9 +2182,23 @@ function toggleCart(){document.getElementById('cside').classList.toggle('on');do
 // Custom order form
 async function submitCustomOrder(e){
   e.preventDefault();
+  if(!currentUser){
+    toast('Inicia sesión para enviar un pedido personalizado');
+    openAuth();
+    return;
+  }
   const btn=document.getElementById('subBtn');btn.textContent='Enviando…';btn.disabled=true;
-  const {error}=await sb.from('orders').insert({customer_name:document.getElementById('fName').value,customer_email:document.getElementById('fEmail').value,interest:document.getElementById('fInterest').value,message:document.getElementById('fMsg').value,items:[],total:null,status:'consulta_personalizada'});
+  const ref='RG'+Date.now().toString().slice(-6);
+  const {error}=await sb.from('orders').insert({
+    ref,
+    customer_name:document.getElementById('fName').value,
+    customer_email:document.getElementById('fEmail').value||currentUser.email,
+    interest:document.getElementById('fInterest').value,
+    message:document.getElementById('fMsg').value,
+    items:[],total:null,status:'consulta_personalizada'
+  });
   if(error){btn.textContent='Enviar pedido personalizado →';btn.disabled=false;toast('Error al enviar','err');return;}
+  document.getElementById('fsuc').innerHTML=`✦ ¡Mensaje recibido! Tu referencia es <strong>${ref}</strong>. Te escribo en menos de 24 horas. Gracias por confiar en Ritagamar 🌿`;
   document.getElementById('fsuc').style.display='block';btn.style.display='none';
   e.target.querySelectorAll('input,select,textarea').forEach(x=>x.value='');
 }
