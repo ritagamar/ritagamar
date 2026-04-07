@@ -4,8 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ritagamar – Joyería Artesanal</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- OPTIMIZACIONES DE ANCHO DE BANDA aplicadas:
+  - Google Fonts: preconnect + preload + solo variantes usadas (elimina peso 600 que no se usa)
+  - Supabase JS: defer para no bloquear render inicial
+  - Imágenes: loading="lazy" + decoding="async" en todas las imágenes fuera del viewport
+  - Catálogo: paginación lazy (12 productos por lote con IntersectionObserver)
+  RECOMENDACIÓN ADICIONAL: convierte las fotos a WebP con squoosh.app (ahorra 60-80% por imagen)
+-->
+<!-- Preconnect para reducir latencia en Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Solo las variantes realmente usadas: Cormorant 300/400 normal+italic, Jost 300/400/500 -->
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet"></noscript>
+<!-- Supabase cargado de forma diferida para no bloquear el render inicial -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --cream:#f5f0e8;--sand:#e8dcc8;--clay:#c4a882;--terra:#a0784a;
@@ -1413,9 +1426,23 @@ async function init(){
       updateCart();
     }
     renderProducts(); updateFilterTabs();
-    const {data:gal}=await sb.from('gallery').select('*').order('position');
-    if(gal&&gal.length) galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));
-    renderGallery();
+    // Galería: cargar solo cuando el usuario llega a esa sección (diferida)
+    const galSection=document.getElementById('galeria');
+    if(galSection){
+      const galObs=new IntersectionObserver(async entries=>{
+        if(entries[0].isIntersecting){
+          galObs.disconnect();
+          const {data:gal}=await sb.from('gallery').select('*').order('position');
+          if(gal&&gal.length) galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));
+          renderGallery();
+        }
+      },{rootMargin:'300px'});
+      galObs.observe(galSection);
+    } else {
+      const {data:gal}=await sb.from('gallery').select('*').order('position');
+      if(gal&&gal.length) galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));
+      renderGallery();
+    }
     document.getElementById('dbStatus').className='db-st db-ok';
   }catch(e){ console.error(e); document.getElementById('dbStatus').className='db-st db-err'; document.getElementById('dbStatus').textContent='● Sin conexión'; }
   setTimeout(()=>{ const ls=document.getElementById('ls'); ls.classList.add('hide'); setTimeout(()=>ls.remove(),500); },600);
@@ -1525,7 +1552,7 @@ function renderFavPage(){
     const c=document.createElement('div'); c.className='pcard fu'; c.style.transitionDelay=`${i*.06}s`;
     const inCart=cart.some(x=>x.id===p.id);
     const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
-    const mainImg=p.photos&&p.photos.length?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy">`:`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
+    const mainImg=p.photos&&p.photos.length?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy" decoding="async">`:`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
     c.innerHTML=`
       <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}
         <button class="pwish on" onclick="event.stopPropagation();toggleFav(${p.id})">♥</button>
@@ -1619,7 +1646,7 @@ function renderHeroPanels(){
   const isAdmin=currentUser?.role==='admin';
   document.getElementById('hig').innerHTML=heroPanels.map((p,i)=>`
     <div class="hic" onclick="hicClick(event,${i},'${p.link||'#'}')">
-      ${p.img?`<img class="hic-img" src="${p.img}" alt="${p.label}">`:''}
+      ${p.img?`<img class="hic-img" src="${p.img}" alt="${p.label}" loading="lazy" decoding="async">`:''}
       <div class="hic-inner" style="${p.img?'background:linear-gradient(to top,rgba(0,0,0,.45),transparent)':'background:linear-gradient(135deg,var(--clay),var(--terra))'}">
         ${!p.img?p.icon||'':''}<span class="hic-lbl">${p.label}</span>
       </div>
@@ -1987,7 +2014,7 @@ async function deleteOrder(id){
 
 function renderAdmProducts(){
   document.getElementById('apg').innerHTML=products.map(p=>{
-    const thumb=p.photos&&p.photos.length?`<img src="${p.photos[0]}">`:`<span style="font-size:3rem">${p.emoji}</span>`;
+    const thumb=p.photos&&p.photos.length?`<img src="${p.photos[0]}" loading="lazy" decoding="async">`:`<span style="font-size:3rem">${p.emoji}</span>`;
     const margin=p.price&&p.cost?Math.round(((p.price-p.cost)/p.price)*100):null;
     return`<div class="apc"><div class="apt" onclick="openEdit(${p.id})">${thumb}<div class="apt-ov"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div></div>
     <div class="api"><div class="apn">${p.name}</div><div class="app">${p.price} € ${margin!==null?`<span style="color:var(--am);font-size:.7rem">· ${margin}% margen</span>`:''}</div>
@@ -2083,36 +2110,68 @@ function renderProducts(){
   const g=document.getElementById('pgrid');g.innerHTML='';
   const list=(filter==='all'?products:products.filter(p=>p.cat===filter)).filter(p=>p.visible!==false);
   if(!list.length){g.innerHTML=`<div class="empty-state"><p>No hay productos en esta categoría aún.</p></div>`;return;}
-  list.forEach((p,i)=>{
-    const c=document.createElement('div');c.className='pcard fu';c.style.transitionDelay=`${i*.06}s`;
-    const inCart=cart.some(x=>x.id===p.id);
-    const isFav=favourites.has(p.id);
-    const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
-    const mainImg=p.photos&&p.photos.length?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy">`:`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
-    const photoCount=p.photos&&p.photos.length>1?`<span class="photo-count">📷 ${p.photos.length}</span>`:'';
-    c.innerHTML=`
-      <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}${photoCount}
-        <button class="pwish${isFav?' on':''}" onclick="event.stopPropagation();toggleFav(${p.id})">${isFav?'♥':'♡'}</button>
-      </div>
-      <div class="pinfo" onclick="openLbox(${p.id})" style="cursor:pointer">
-        <div class="pcat">${p.cat}${p.mat?` · ${p.mat.split(',')[0]}`:''}</div>
-        <div class="pname">${p.name}</div>
-        <div class="pdesc">${p.desc}</div>
-        <div class="pfoot"><span class="pprice">${p.price} €</span>
-          ${storeMode==='catalogue'
-            ?`<button class="acb-contact" onclick="event.stopPropagation();updateContactCard();document.getElementById('contactCard').classList.add('on')">Contactar</button>`
-            :`<button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>`
-          }
+
+  // Paginación lazy: renderizamos primero los primeros 12, el resto al hacer scroll
+  const PAGE=12;
+  let rendered=0;
+
+  function renderBatch(from,to){
+    const fragment=document.createDocumentFragment();
+    for(let i=from;i<Math.min(to,list.length);i++){
+      const p=list[i];
+      const c=document.createElement('div');c.className='pcard fu';c.style.transitionDelay=`${(i%PAGE)*.06}s`;
+      const inCart=cart.some(x=>x.id===p.id);
+      const isFav=favourites.has(p.id);
+      const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
+      // loading="lazy" + decoding="async" en TODAS las imágenes del catálogo
+      const mainImg=p.photos&&p.photos.length
+        ?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy" decoding="async">`
+        :`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
+      const photoCount=p.photos&&p.photos.length>1?`<span class="photo-count">📷 ${p.photos.length}</span>`:'';
+      c.innerHTML=`
+        <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}${photoCount}
+          <button class="pwish${isFav?' on':''}" onclick="event.stopPropagation();toggleFav(${p.id})">${isFav?'♥':'♡'}</button>
         </div>
-      </div>`;
-    g.appendChild(c);setTimeout(()=>{c.classList.add('vis');observer.observe(c);},40+i*60);
-  });
+        <div class="pinfo" onclick="openLbox(${p.id})" style="cursor:pointer">
+          <div class="pcat">${p.cat}${p.mat?` · ${p.mat.split(',')[0]}`:''}</div>
+          <div class="pname">${p.name}</div>
+          <div class="pdesc">${p.desc}</div>
+          <div class="pfoot"><span class="pprice">${p.price} €</span>
+            ${storeMode==='catalogue'
+              ?`<button class="acb-contact" onclick="event.stopPropagation();updateContactCard();document.getElementById('contactCard').classList.add('on')">Contactar</button>`
+              :`<button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>`
+            }
+          </div>
+        </div>`;
+      fragment.appendChild(c);
+      setTimeout(()=>{c.classList.add('vis');observer.observe(c);},40+(i%PAGE)*60);
+    }
+    g.appendChild(fragment);
+    rendered=Math.min(to,list.length);
+  }
+
+  // Renderizar primer bloque inmediatamente
+  renderBatch(0,PAGE);
+
+  // Si hay más, añadir un sentinel al final para cargar el resto al hacer scroll
+  if(list.length>PAGE){
+    const sentinel=document.createElement('div');
+    sentinel.style.height='1px';
+    g.appendChild(sentinel);
+    const loadMore=new IntersectionObserver(entries=>{
+      if(entries[0].isIntersecting&&rendered<list.length){
+        renderBatch(rendered,rendered+PAGE);
+        if(rendered>=list.length){loadMore.disconnect();sentinel.remove();}
+      }
+    },{rootMargin:'200px'});
+    loadMore.observe(sentinel);
+  }
 }
 
 function renderGallery(){
   const g=document.getElementById('galgrid');g.innerHTML='';
   const labels=['✦ Proceso creativo','🌿 Materiales','✦ Detalle','🌸 Flores silvestres','✦ Acabado final','🍯 Resina','✦ Colección otoño','🌙 Pendientes','✦ En el taller'];
-  if(galleryImgs.length){galleryImgs.forEach(gi=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<img src="${gi.url}" alt="" loading="lazy">`;g.appendChild(d);});}
+  if(galleryImgs.length){galleryImgs.forEach(gi=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<img src="${gi.url}" alt="" loading="lazy" decoding="async">`;g.appendChild(d);});}
   else{labels.forEach(lbl=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<div class="gip"><span style="font-size:1.8rem">📷</span>${lbl}</div>`;g.appendChild(d);});}
 }
 
