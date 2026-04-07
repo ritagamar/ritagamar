@@ -795,6 +795,14 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 }
 
 </style>
+  
+
+    <title>Ritagamar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo.png">
+
+
 </head>
 <body>
 
@@ -964,7 +972,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 <div class="moverlay" id="authOv" onclick="authOvClick(event)">
   <div class="amodal">
     <div id="s1">
-      <div class="mhd"><div><h2>Bienvenida a <em>Ritagamar</em></h2><p>Tu espacio de joyería artesanal</p></div><button class="mx" onclick="closeAuth()">✕</button></div>
+      <div class="mhd"><div><h2>Bienvenida/o a <em>Ritagamar</em></h2><p>Tu espacio de joyería artesanal</p></div><button class="mx" onclick="closeAuth()">✕</button></div>
       <div class="mbd">
         <div class="mtabs"><button class="mtab on" id="tl" onclick="switchTab('l')">Entrar</button><button class="mtab" id="tr" onclick="switchTab('r')">Crear cuenta</button></div>
         <div class="apanel on" id="pl">
@@ -1695,7 +1703,7 @@ async function loginAs(u){
   closeAuth();refreshNav();renderHeroPanels();
   document.getElementById('awelcome').textContent=u.name;
   if(u.role!=='admin'){ await loadFavouritesDB(); updateFavBadge(); renderProducts(); }
-  toast(`✦ ¡Bienvenida, ${u.name}! 🌿`);
+  toast(`✦ ¡Bienvenida/o/o, ${u.name}! 🌿`);
 }
 function logout(){
   currentUser=null;pending=null;localStorage.removeItem('rg_session');
