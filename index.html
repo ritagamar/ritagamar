@@ -1399,7 +1399,7 @@ async function init(){
   try{
     const {data:sets}=await sb.from('settings').select('*');
     if(sets){ const m={}; sets.forEach(r=>m[r.key]=r.value); applySettings(m); }
-    const {data:prods,error}=await sb.from('products').select('*').eq('visible',true).order('id');
+    const {data:prods,error}=await sb.from('products').select('id,name,category,price,cost,stock,description,materials,care,badge,emoji,visible').eq('visible',true).order('id');
     if(error) throw error;
     products=prods.map(normalizeProduct);
     // Restore saved cart
@@ -1413,9 +1413,24 @@ async function init(){
       updateCart();
     }
     renderProducts(); updateFilterTabs();
-    const {data:gal}=await sb.from('gallery').select('*').order('position');
-    if(gal&&gal.length) galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));
-    renderGallery();
+    // Gallery: load only ids first, then load images lazily when section is visible
+    const {data:gal}=await sb.from('gallery').select('id,position').order('position');
+    if(gal&&gal.length){
+      galleryImgs=gal.map(g=>({id:g.id,url:null}));
+      renderGallery(); // renders placeholders
+      // Load actual images when gallery scrolls into view
+      const galSection=document.getElementById('galeria');
+      if(galSection){
+        const galObs=new IntersectionObserver(async entries=>{
+          if(entries[0].isIntersecting){
+            galObs.disconnect();
+            const {data:galFull}=await sb.from('gallery').select('*').order('position');
+            if(galFull){galleryImgs=galFull.map(g=>({id:g.id,url:g.image_url}));renderGallery();}
+          }
+        },{threshold:.05});
+        galObs.observe(galSection);
+      }
+    }
     document.getElementById('dbStatus').className='db-st db-ok';
   }catch(e){ console.error(e); document.getElementById('dbStatus').className='db-st db-err'; document.getElementById('dbStatus').textContent='● Sin conexión'; }
   setTimeout(()=>{ const ls=document.getElementById('ls'); ls.classList.add('hide'); setTimeout(()=>ls.remove(),500); },600);
@@ -1637,7 +1652,41 @@ function openHPanel(e,idx){
   document.getElementById('hpanel').classList.add('on');
 }
 function closeHPanel(){document.getElementById('hpanel').classList.remove('on');}
-function hpHandleImg(input){if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=ev=>{hpCurrentImg=ev.target.result;document.getElementById('hpImgPreview').src=hpCurrentImg;document.getElementById('hpImgPreview').style.display='';document.getElementById('hpImgRm').style.display='';document.getElementById('hpImgInner').style.display='none';};r.readAsDataURL(input.files[0]);}
+// ══════════════════════════════════════════
+// IMAGE COMPRESSION — max 1200px, quality 0.75
+// Reduces base64 size by ~60-70% vs raw camera photo
+// ══════════════════════════════════════════
+function compressImage(file, maxPx=1200, quality=0.78){
+  return new Promise(resolve=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let {width:w,height:h}=img;
+      if(w>maxPx||h>maxPx){ const r=Math.min(maxPx/w,maxPx/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      canvas.toBlob(blob=>{
+        const reader=new FileReader();
+        reader.onload=e=>resolve(e.target.result);
+        reader.readAsDataURL(blob);
+      },'image/jpeg',quality);
+    };
+    img.onerror=()=>{ const r=new FileReader(); r.onload=e=>resolve(e.target.result); r.readAsDataURL(file); };
+    img.src=url;
+  });
+}
+
+function hpHandleImg(input){
+  if(!input.files||!input.files[0])return;
+  compressImage(input.files[0],1200,0.78).then(data=>{
+    hpCurrentImg=data;
+    document.getElementById('hpImgPreview').src=data;
+    document.getElementById('hpImgPreview').style.display='';
+    document.getElementById('hpImgRm').style.display='';
+    document.getElementById('hpImgInner').style.display='none';
+  });
+}
 function hpRemoveImg(e){e.stopPropagation();hpCurrentImg=null;document.getElementById('hpImgPreview').style.display='none';document.getElementById('hpImgRm').style.display='none';document.getElementById('hpImgInner').style.display='';}
 async function saveHPanel(){
   heroPanels[editingHPanelIdx]={...heroPanels[editingHPanelIdx],label:document.getElementById('hpLabel').value,link:document.getElementById('hpLink').value,img:hpCurrentImg};
@@ -2001,7 +2050,14 @@ function renderMIA(){
   editPhotos.forEach((src,i)=>{const d=document.createElement('div');d.className='mia-item';d.innerHTML=`<img src="${src}"><button class="mia-rm" onclick="rmPhoto(${i})" type="button">✕</button>${i===0?'<span class="mia-main-badge">Principal</span>':''}`;g.appendChild(d);});
   const add=document.createElement('label');add.className='mia-add';add.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Añadir foto</span><input type="file" accept="image/*" multiple onchange="addPhotos(this)">`;g.appendChild(add);
 }
-function addPhotos(input){const files=[...input.files];let done=0;files.forEach(f=>{const r=new FileReader();r.onload=e=>{editPhotos.push(e.target.result);done++;if(done===files.length)renderMIA();};r.readAsDataURL(f);});input.value='';}
+function addPhotos(input){
+  const files=[...input.files];
+  Promise.all(files.map(f=>compressImage(f,1200,0.78))).then(results=>{
+    editPhotos.push(...results);
+    renderMIA();
+  });
+  input.value='';
+}
 function rmPhoto(i){editPhotos.splice(i,1);renderMIA();}
 
 function openEdit(id,showDel=false){
@@ -2049,7 +2105,15 @@ function renderAdmGallery(){
   h+=`<label class="agi-add"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Añadir</span><input type="file" accept="image/*" style="display:none" onchange="addGalleryImg(this)"></label>`;
   document.getElementById('agalgrid').innerHTML=h;
 }
-async function addGalleryImg(input){if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=async ev=>{const {error}=await sb.from('gallery').insert({image_url:ev.target.result,position:galleryImgs.length});if(error){toast('Error al subir','err');return;}toast('✦ Foto añadida 📷');const {data:gal}=await sb.from('gallery').select('*').order('position');if(gal){galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));renderAdmGallery();renderGallery();}};r.readAsDataURL(input.files[0]);}
+async function addGalleryImg(input){
+  if(!input.files||!input.files[0])return;
+  const data=await compressImage(input.files[0],1400,0.80);
+  const {error}=await sb.from('gallery').insert({image_url:data,position:galleryImgs.length});
+  if(error){toast('Error al subir','err');return;}
+  toast('✦ Foto añadida 📷');
+  const {data:gal}=await sb.from('gallery').select('*').order('position');
+  if(gal){galleryImgs=gal.map(g=>({id:g.id,url:g.image_url}));renderAdmGallery();renderGallery();}
+}
 async function delGalleryImg(id){await sb.from('gallery').delete().eq('id',id);galleryImgs=galleryImgs.filter(g=>g.id!==id);renderAdmGallery();renderGallery();toast('Foto eliminada');}
 function renderAdmUsers(list){
   const all=list||[];
@@ -2088,8 +2152,14 @@ function renderProducts(){
     const inCart=cart.some(x=>x.id===p.id);
     const isFav=favourites.has(p.id);
     const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
-    const mainImg=p.photos&&p.photos.length?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy">`:`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
-    const photoCount=p.photos&&p.photos.length>1?`<span class="photo-count">📷 ${p.photos.length}</span>`:'';
+    // Show emoji placeholder in listing — real photo loads only when lightbox opens
+    // This is the main bandwidth fix: avoids downloading base64 images on page load
+    const hasPhotos=p.photos&&p.photos.length; // may be undefined until lightbox fetch
+    const mainImg=`<div class="pip" style="position:relative;cursor:zoom-in">
+      <span style="font-size:3.2rem">${p.emoji}</span>
+      ${hasPhotos?`<span style="position:absolute;bottom:.5rem;right:.5rem;background:rgba(0,0,0,.45);color:#fff;font-size:.62rem;padding:.18rem .45rem;border-radius:8px">📷 ver fotos</span>`:''}
+    </div>`;
+    const photoCount='';
     c.innerHTML=`
       <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}${photoCount}
         <button class="pwish${isFav?' on':''}" onclick="event.stopPropagation();toggleFav(${p.id})">${isFav?'♥':'♡'}</button>
@@ -2112,15 +2182,39 @@ function renderProducts(){
 function renderGallery(){
   const g=document.getElementById('galgrid');g.innerHTML='';
   const labels=['✦ Proceso creativo','🌿 Materiales','✦ Detalle','🌸 Flores silvestres','✦ Acabado final','🍯 Resina','✦ Colección otoño','🌙 Pendientes','✦ En el taller'];
-  if(galleryImgs.length){galleryImgs.forEach(gi=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<img src="${gi.url}" alt="" loading="lazy">`;g.appendChild(d);});}
-  else{labels.forEach(lbl=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<div class="gip"><span style="font-size:1.8rem">📷</span>${lbl}</div>`;g.appendChild(d);});}
+  if(galleryImgs.length){
+    galleryImgs.forEach((gi,i)=>{
+      const d=document.createElement('div');d.className='gi';
+      // First 4 load eagerly, rest lazily
+      d.innerHTML=`<img src="${gi.url}" alt="" loading="${i<4?'eager':'lazy'}">`;
+      g.appendChild(d);
+    });
+  } else {
+    labels.forEach(lbl=>{const d=document.createElement('div');d.className='gi';d.innerHTML=`<div class="gip"><span style="font-size:1.8rem">📷</span>${lbl}</div>`;g.appendChild(d);});
+  }
 }
 
-// LIGHTBOX
-function openLbox(id){
+// LIGHTBOX — images loaded on demand (not in initial product list)
+async function openLbox(id){
   const p=products.find(x=>x.id===id);if(!p)return;
-  lboxPid=id;lboxPhotos=p.photos&&p.photos.length?p.photos:[null];lboxIdx=0;
-  renderLbox(p);document.getElementById('lbox').classList.add('on');document.body.style.overflow='hidden';
+  lboxPid=id;
+  document.getElementById('lbox').classList.add('on');
+  document.body.style.overflow='hidden';
+  // Show product info immediately with loading state
+  lboxPhotos=[null]; lboxIdx=0;
+  renderLbox(p);
+  // Fetch image only now (not on page load)
+  if(!p.photos){
+    const {data}=await sb.from('products').select('image_url').eq('id',id).single();
+    if(data&&data.image_url){
+      try{
+        const parsed=JSON.parse(data.image_url);
+        p.photos=Array.isArray(parsed)?parsed:[data.image_url];
+      }catch(e){p.photos=[data.image_url];}
+    } else { p.photos=[]; }
+  }
+  lboxPhotos=p.photos&&p.photos.length?p.photos:[null];
+  renderLbox(p);
 }
 function closeLbox(){document.getElementById('lbox').classList.remove('on');document.body.style.overflow='';}
 function lboxBgClick(e){if(e.target.id==='lbox')closeLbox();}
