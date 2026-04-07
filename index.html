@@ -1584,7 +1584,7 @@ function applyStoreMode(mode){
 
 function updateContactCard(){
   // Sync contact card links with current settings
-  const phone='XXXXXXXXX';
+  const phone=bizumNumber!=='XXXXXXX'?bizumNumber:(document.getElementById('contactEmail')?.textContent||'');
   const ig=document.getElementById('contactIg')?.textContent||'@ritagamar';
   const email=document.getElementById('contactEmail')?.textContent||'hola@ritagamar.com';
   const ph=document.getElementById('ccPhoneTxt'); if(ph) ph.textContent=phone;
