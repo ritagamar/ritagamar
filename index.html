@@ -1558,9 +1558,9 @@ function renderFavPage(){
         <button class="pwish on" onclick="event.stopPropagation();toggleFav(${p.id})">♥</button>
       </div>
       <div class="pinfo" onclick="openLbox(${p.id})" style="cursor:pointer">
-        <div class="pcat">${p.cat}</div>
         <div class="pname">${p.name}</div>
         <div class="pdesc">${p.desc}</div>
+        <div class="pcat">${p.cat}</div>
         <div class="pfoot">
           <span class="pprice">${p.price} €</span>
           <button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>
