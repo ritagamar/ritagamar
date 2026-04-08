@@ -359,7 +359,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
 /* ── ORDER DETAIL MODAL ── */
 .od-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:800;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(6px)}
 .od-ov.on{opacity:1;pointer-events:all}
-.od-box{background:var(--asurf);border:1px solid var(--ab);border-radius:10px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 32px 80px rgba(0,0,0,.5);transform:scale(.97) translateY(16px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.od-box{background:linear-gradient(rgba(0,0,0,0.08), rgba(0,0,0,0.08)),var(--asurf);border:1px solid var(--ab);border-radius:10px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 32px 80px rgba(0,0,0,.5);transform:scale(.97) translateY(16px);transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .od-ov.on .od-box{transform:scale(1) translateY(0)}
 .od-hd{display:flex;justify-content:space-between;align-items:center;padding:1.4rem 1.6rem;border-bottom:1px solid var(--ab);position:sticky;top:0;background:var(--asurf);z-index:1}
 .od-hd h3{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:300;color:#f0e8c8}
