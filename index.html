@@ -2147,7 +2147,7 @@ async function addCollection(){
   const name=document.getElementById('newCollName').value.trim();
   const desc=document.getElementById('newCollDesc').value.trim();
   if(!name){toast('Escribe un nombre para la colección','err');return;}
-  const {error}=await sb.from('collections').insert({name,desc});
+  const {error}=await sb.from('collections').insert({name,description});
   if(error){toast('Error al crear colección','err');return;}
   document.getElementById('newCollName').value='';
   document.getElementById('newCollDesc').value='';
@@ -2177,7 +2177,7 @@ function renderAdmCollections(){
     const count=products.filter(p=>p.collection===c.id).length;
     return`<div class="coll-item">
       <div class="coll-item-name">✦ ${c.name}</div>
-      <div class="coll-item-desc">${c.desc||'<em style="opacity:.5">Sin descripción</em>'}</div>
+      <div class="coll-item-desc">${c.description||'<em style="opacity:.5">Sin descripción</em>'}</div>
       <div class="coll-item-count">${count} producto${count!==1?'s':''}</div>
       <button class="order-del-btn" onclick="deleteCollection('${c.id}','${c.name.replace(/'/g,"\\'")}')">✕ Eliminar</button>
     </div>`;
@@ -2228,7 +2228,7 @@ function setCollection(collId){
     const c=collections.find(x=>x.id===collId);
     if(c){
       document.getElementById('collBannerName').textContent=c.name;
-      document.getElementById('collBannerDesc').textContent=c.desc||'';
+      document.getElementById('collBannerDesc').textContent=c.description||'';
       banner.classList.add('on');
     }
   } else {
