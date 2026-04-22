@@ -2147,7 +2147,7 @@ async function addCollection(){
   const name=document.getElementById('newCollName').value.trim();
   const desc=document.getElementById('newCollDesc').value.trim();
   if(!name){toast('Escribe un nombre para la colección','err');return;}
-  const {error}=await sb.from('collections').insert({name,description});
+  const {error}=await sb.from('collections').insert({name,description:desc});
   if(error){toast('Error al crear colección','err');return;}
   document.getElementById('newCollName').value='';
   document.getElementById('newCollDesc').value='';
