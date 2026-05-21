@@ -167,6 +167,13 @@ nav.scrolled{box-shadow:0 4px 24px var(--sh)}
 .empty-state{text-align:center;padding:5rem 2rem;color:var(--clay);grid-column:1/-1}
 .empty-state p{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.3rem}
 
+/* ══ PAGINATION ══ */
+.pagination{display:flex;align-items:center;justify-content:center;gap:.5rem;padding:3rem 0 1rem}
+.pag-btn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--sand);background:none;color:var(--bark);font-family:'Jost',sans-serif;font-size:.8rem;letter-spacing:.05em;cursor:pointer;border-radius:3px;transition:all .25s}
+.pag-btn:hover{border-color:var(--clay);color:var(--dark)}
+.pag-btn.on{background:var(--bark);color:var(--cream);border-color:var(--bark)}
+.pag-btn.pag-arrow{font-size:1rem}
+.pag-btn:disabled{opacity:.3;cursor:default;pointer-events:none}
 /* ══ FAVOURITES PAGE ══ */
 .fav-page{display:none;min-height:100vh;padding-top:80px}
 .fav-page.on{display:block}
@@ -997,7 +1004,7 @@ footer{background:var(--dark);color:var(--sand);padding:4rem;display:grid;grid-t
     <div class="coll-banner-desc" id="collBannerDesc"></div>
   </div>
   <div class="ftabs" id="ftabs"><button class="ftab on" data-filter="all">Todo</button></div>
-  <div class="catalog"><div class="pgrid" id="pgrid"></div></div>
+  <div class="catalog"><div class="pgrid" id="pgrid"></div><div class="pagination" id="pagination"></div></div>
 </section>
 
 <section id="galeria" class="galsec">
@@ -1532,6 +1539,11 @@ const EMOJIS = ['🌙','🌿','🌸','☀️','🍯','🌲','🏺','💜','🪶'
 // STATE
 // ══════════════════════════════════════════
 let products=[], galleryImgs=[], currentUser=null, cart=[], filter='all';
+// paginación server-side
+let currentPage=1;
+const PAGE_SIZE=9;
+let productsMeta=[]; // [{id,cat,collection,visible}] — carga ligera, siempre actualizada
+let totalPublicCount=0; // total tras filtros activos
 let tfaCode='', pending=null, editId=null, selectedEmoji='🌙', selectedBadge='', editPhotos=[];
 let lboxPhotos=[], lboxIdx=0, lboxPid=null;
 let editingHPanelIdx=null, hpCurrentImg=null;
@@ -1572,20 +1584,21 @@ async function init(){
   try{
     const {data:sets}=await sb.from('settings').select('*');
     if(sets){ const m={}; sets.forEach(r=>m[r.key]=r.value); applySettings(m); }
-    const {data:prods,error}=await sb.from('products').select('*').eq('visible',true).order('position',{nullsFirst:false}).order('id');
-    if(error) throw error;
-    products=prods.map(normalizeProduct);
+    // 1. Metadata ligera (solo campos necesarios para tabs y conteo — sin fotos)
+    const {data:meta}=await sb.from('products').select('id,category,collection,visible').eq('visible',true).order('position',{nullsFirst:false}).order('id');
+    if(meta) productsMeta=meta;
     // Restore saved cart
     restoreCart();
     if(window._pendingCartIds&&window._pendingCartIds.length){
       window._pendingCartIds.forEach(id=>{
-        const p=products.find(x=>x.id===Number(id));
-        if(p&&!cart.some(x=>x.id===p.id)&&p.badge!=='agotado') cart.push(p);
+        const found=productsMeta.find(x=>x.id===Number(id));
+        if(found) window._pendingCartIds_resolved=(window._pendingCartIds_resolved||[]).concat(id);
       });
       delete window._pendingCartIds;
-      updateCart();
     }
-    renderProducts(); updateFilterTabs();
+    // 2. Cargar solo la primera página completa
+    await loadPage(1);
+    updateFilterTabs();
     // Load collections for the public UI
     const {data:colls}=await sb.from('collections').select('*').order('name');
     if(colls){ collections=colls; renderCollNav(); }
@@ -1695,7 +1708,7 @@ async function toggleFav(productId){
     toast('♥ Guardado en favoritos');
   }
   localStorage.setItem('rg_favs',JSON.stringify([...favourites]));
-  updateFavBadge(); renderProducts();
+  updateFavBadge(); renderProducts(); // re-render botones sin nueva query
   if(lboxPid) { const p=products.find(x=>x.id===lboxPid); if(p) renderLbox(p); }
 }
 
@@ -1759,7 +1772,7 @@ function applyStoreMode(mode){
   if(contacto) contacto.style.display=isCat?'none':'';
 
   // Re-render products to show correct button
-  renderProducts();
+  loadPage(currentPage);
 
   // Update contact card with current settings
   updateContactCard();
@@ -1896,13 +1909,13 @@ async function loginAs(u){
   currentUser=u;localStorage.setItem('rg_session',JSON.stringify(u));
   closeAuth();refreshNav();renderHeroPanels();
   document.getElementById('awelcome').textContent=u.name;
-  if(u.role!=='admin'){ await loadFavouritesDB(); updateFavBadge(); renderProducts(); }
+  if(u.role!=='admin'){ await loadFavouritesDB(); updateFavBadge(); loadPage(1); }
   toast(`✦ ¡Bienvenida/o/o, ${u.name}! 🌿`);
 }
 function logout(){
   currentUser=null;pending=null;localStorage.removeItem('rg_session');
   favourites.clear();localStorage.removeItem('rg_favs');
-  closeUM();refreshNav();renderHeroPanels();updateFavBadge();renderProducts();
+  closeUM();refreshNav();renderHeroPanels();updateFavBadge();loadPage(1);
   document.getElementById('s1').style.display='';document.getElementById('s2').style.display='none';
   toast('Sesión cerrada. ¡Hasta pronto! 🌿');
 }
@@ -2042,15 +2055,7 @@ async function loadAdminData(){
   if(colls){ collections=colls; renderAdmCollections(); renderCollNav(); }
 
   const {data:prods}=await sb.from('products').select('*').order('position',{nullsFirst:false}).order('id');
-  if(prods){
-    // En admin: products contiene TODOS para el panel
-    products=prods.map(normalizeProduct);
-    // Actualizar también la metadata ligera con los datos frescos
-    productsMeta=prods.map(p=>({id:p.id,category:p.category,collection:p.collection,visible:p.visible}));
-    renderAdmProducts();
-    updateFilterTabs();
-    // NO llamar a renderProducts() ni loadPage() — la tienda pública queda intacta
-  }
+  if(prods){products=prods.map(normalizeProduct);renderAdmProducts();updateFilterTabs();}
   const {data:orders}=await sb.from('orders').select('*').order('created_at',{ascending:false});
   if(orders)renderOrders(orders);
   document.getElementById('ds-prod').textContent=prods?prods.length:'—';
@@ -2247,7 +2252,7 @@ async function saveProductOrder(){
   await Promise.all(updates);
   btn.textContent='Guardar orden →';btn.disabled=false;
   document.getElementById('apgSaveBar').classList.remove('on');
-  renderProducts(); // actualiza la tienda en directo
+  renderProducts(); // re-render admin inline con nuevo orden
   toast('✦ Orden guardado ✓');
 }
 
@@ -2394,7 +2399,7 @@ function updateFilterTabs(){
   const cats=['all',...new Set(inColl.map(p=>p.cat))];
   document.getElementById('ftabs').innerHTML=cats.map(c=>`<button class="ftab${c===filter?' on':''}" data-filter="${c}" onclick="setFilter('${c}')">${c==='all'?'Todo':c.charAt(0).toUpperCase()+c.slice(1)}</button>`).join('');
 }
-function setFilter(f){filter=f;updateFilterTabs();renderProducts();}
+function setFilter(f){filter=f;currentPage=1;updateFilterTabs();loadPage(1);}
 
 // ══════════════════════════════════════════
 // COLLECTIONS — public UI
@@ -2420,7 +2425,8 @@ function setCollection(collId){
       banner.classList.add('on');
     }
   } else { banner.classList.remove('on'); }
-  updateFilterTabs(); renderProducts();
+  currentPage=1;
+  updateFilterTabs(); loadPage(1);
 }
 
 function renderCollNav(){
@@ -2454,69 +2460,104 @@ function renderCollNav(){
     +collections.map(c=>`<option value="${c.id}"${activeCollection===c.id?' selected':''}>${c.name}</option>`).join('');
 }
 
-function renderProducts(){
-  const g=document.getElementById('pgrid');g.innerHTML='';
-  let list=(filter==='all'?products:products.filter(p=>p.cat===filter)).filter(p=>p.visible!==false);
-  if(activeCollection) list=list.filter(p=>p.collection===activeCollection);
-  if(!list.length){g.innerHTML=`<div class="empty-state"><p>${activeCollection?'No hay productos en esta colección aún.':'No hay productos en esta categoría aún.'}</p></div>`;return;}
+// ── PAGINACIÓN SERVER-SIDE ──────────────────
+// loadPage: consulta Supabase solo los 9 productos de la página pedida
+async function loadPage(page){
+  currentPage=page;
+  const g=document.getElementById('pgrid');
+  const pag=document.getElementById('pagination');
+  g.innerHTML='<div style="text-align:center;padding:3rem;color:var(--clay);font-size:.85rem;letter-spacing:.1em">Cargando…</div>';
+  pag.innerHTML='';
 
-  // Paginación lazy: renderizamos primero los primeros 12, el resto al hacer scroll
-  const PAGE=12;
-  let rendered=0;
+  // Calcular IDs filtrados desde la metadata ligera
+  let metaList=productsMeta.filter(p=>p.visible!==false);
+  if(filter!=='all') metaList=metaList.filter(p=>p.category===filter);
+  if(activeCollection) metaList=metaList.filter(p=>p.collection===activeCollection);
 
-  function renderBatch(from,to){
-    const fragment=document.createDocumentFragment();
-    for(let i=from;i<Math.min(to,list.length);i++){
-      const p=list[i];
-      const c=document.createElement('div');c.className='pcard fu';c.style.transitionDelay=`${(i%PAGE)*.06}s`;
-      const inCart=cart.some(x=>x.id===p.id);
-      const isFav=favourites.has(p.id);
-      const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
-      // loading="lazy" + decoding="async" en TODAS las imágenes del catálogo
-      const mainImg=p.photos&&p.photos.length
-        ?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy" decoding="async">`
-        :`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
-      const photoCount=p.photos&&p.photos.length>1?`<span class="photo-count">📷 ${p.photos.length}</span>`:'';
-      c.innerHTML=`
-        <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}${photoCount}
-          <button class="pwish${isFav?' on':''}" onclick="event.stopPropagation();toggleFav(${p.id})">${isFav?'♥':'♡'}</button>
-        </div>
-        <div class="pinfo" onclick="openLbox(${p.id})" style="cursor:pointer">
-          
-          <div class="pname">${p.name}</div>
-          <div class="pdesc">${p.desc}</div>
-          <div class="pcat">${p.cat}${p.mat?` · ${p.mat.split(',')[0]}`:''}</div>
-          <div class="pfoot"><span class="pprice">${p.price} €</span>
-            ${storeMode==='catalogue'
-              ?`<button class="acb-contact" onclick="event.stopPropagation();updateContactCard();document.getElementById('contactCard').classList.add('on')">Contactar</button>`
-              :`<button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>`
-            }
-          </div>
-        </div>`;
-      fragment.appendChild(c);
-      setTimeout(()=>{c.classList.add('vis');observer.observe(c);},40+(i%PAGE)*60);
-    }
-    g.appendChild(fragment);
-    rendered=Math.min(to,list.length);
+  const total=metaList.length;
+  if(!total){
+    g.innerHTML=`<div class="empty-state"><p>${activeCollection?'No hay productos en esta colección aún.':'No hay productos en esta categoría aún.'}</p></div>`;
+    return;
   }
 
-  // Renderizar primer bloque inmediatamente
-  renderBatch(0,PAGE);
+  const totalPages=Math.ceil(total/PAGE_SIZE);
+  if(currentPage>totalPages) currentPage=1;
+  const from=(currentPage-1)*PAGE_SIZE;
+  const pageIds=metaList.slice(from,from+PAGE_SIZE).map(p=>p.id);
 
-  // Si hay más, añadir un sentinel al final para cargar el resto al hacer scroll
-  if(list.length>PAGE){
-    const sentinel=document.createElement('div');
-    sentinel.style.height='1px';
-    g.appendChild(sentinel);
-    const loadMore=new IntersectionObserver(entries=>{
-      if(entries[0].isIntersecting&&rendered<list.length){
-        renderBatch(rendered,rendered+PAGE);
-        if(rendered>=list.length){loadMore.disconnect();sentinel.remove();}
-      }
-    },{rootMargin:'200px'});
-    loadMore.observe(sentinel);
-  }
+  // Query completa solo de los 9 IDs de esta página
+  const {data:prods}=await sb.from('products').select('*').in('id',pageIds).order('position',{nullsFirst:false}).order('id');
+  products=(prods||[]).map(normalizeProduct);
+
+  renderProducts(totalPages);
 }
+
+function renderProducts(totalPages){
+  const g=document.getElementById('pgrid');
+  const pag=document.getElementById('pagination');
+  g.innerHTML=''; pag.innerHTML='';
+
+  if(!products.length){
+    g.innerHTML=`<div class="empty-state"><p>No hay productos en esta página.</p></div>`;
+    return;
+  }
+
+  products.forEach((p,i)=>{
+    const c=document.createElement('div');
+    c.className='pcard fu';
+    c.style.transitionDelay=`${i*.06}s`;
+    const inCart=cart.some(x=>x.id===p.id);
+    const isFav=favourites.has(p.id);
+    const badge=p.badge?`<span class="pbadge badge-${p.badge}">${p.badge}</span>`:'';
+    const mainImg=p.photos&&p.photos.length
+      ?`<img class="pmain" src="${p.photos[0]}" alt="${p.name}" loading="lazy" decoding="async">`
+      :`<div class="pip"><span style="font-size:3.5rem">${p.emoji}</span></div>`;
+    const photoCount=p.photos&&p.photos.length>1?`<span class="photo-count">📷 ${p.photos.length}</span>`:'';
+    c.innerHTML=`
+      <div class="piw" onclick="openLbox(${p.id})" style="cursor:zoom-in">${mainImg}${badge}${photoCount}
+        <button class="pwish${isFav?' on':''}" onclick="event.stopPropagation();toggleFav(${p.id})">${isFav?'♥':'♡'}</button>
+      </div>
+      <div class="pinfo" onclick="openLbox(${p.id})" style="cursor:pointer">
+        <div class="pname">${p.name}</div>
+        <div class="pdesc">${p.desc}</div>
+        <div class="pcat">${p.cat}${p.mat?` · ${p.mat.split(',')[0]}`:''}</div>
+        <div class="pfoot"><span class="pprice">${p.price} €</span>
+          ${storeMode==='catalogue'
+            ?`<button class="acb-contact" onclick="event.stopPropagation();updateContactCard();document.getElementById('contactCard').classList.add('on')">Contactar</button>`
+            :`<button class="acb" onclick="event.stopPropagation();addCart(${p.id})" ${inCart||p.badge==='agotado'?'disabled':''}>${p.badge==='agotado'?'Agotado':inCart?'En cesta ✓':'Añadir'}</button>`
+          }
+        </div>
+      </div>`;
+    g.appendChild(c);
+    setTimeout(()=>{c.classList.add('vis');observer.observe(c);},40+i*60);
+  });
+
+  // Botones de paginación
+  if(!totalPages||totalPages<=1) return;
+  const prev=document.createElement('button');
+  prev.className='pag-btn pag-arrow';prev.textContent='‹';prev.title='Anterior';
+  if(currentPage===1) prev.disabled=true;
+  prev.onclick=()=>goPage(currentPage-1);
+  pag.appendChild(prev);
+  for(let n=1;n<=totalPages;n++){
+    const btn=document.createElement('button');
+    btn.className='pag-btn'+(n===currentPage?' on':'');
+    btn.textContent=n;
+    const pg=n; btn.onclick=()=>goPage(pg);
+    pag.appendChild(btn);
+  }
+  const next=document.createElement('button');
+  next.className='pag-btn pag-arrow';next.textContent='›';next.title='Siguiente';
+  if(currentPage===totalPages) next.disabled=true;
+  next.onclick=()=>goPage(currentPage+1);
+  pag.appendChild(next);
+}
+
+function goPage(n){
+  loadPage(n);
+  document.getElementById('catalogo')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 
 function renderGallery(){
   const g=document.getElementById('galgrid');g.innerHTML='';
