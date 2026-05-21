@@ -2039,14 +2039,19 @@ function closeAdmin(){document.getElementById('admpanel').classList.remove('on')
 function aTab(n,btn){
   document.querySelectorAll('.asni').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.asec').forEach(s=>s.classList.remove('on'));document.getElementById('a-'+n).classList.add('on');
-  // sync mobile tabbar
   document.querySelectorAll('.atb-btn').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().includes(n.slice(0,4))));
+  if(n==='products') loadAllProductsForAdmin();
 }
 function aTabMobile(n,btn){
   document.querySelectorAll('.atb-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
   document.querySelectorAll('.asec').forEach(s=>s.classList.remove('on'));document.getElementById('a-'+n).classList.add('on');
-  // sync desktop sidebar
   document.querySelectorAll('.asni').forEach(b=>b.classList.remove('on'));
+  if(n==='products') loadAllProductsForAdmin();
+}
+
+async function loadAllProductsForAdmin(){
+  const {data:prods}=await sb.from('products').select('*').order('position',{nullsFirst:false}).order('id');
+  if(prods){products=prods.map(normalizeProduct);renderAdmProducts();}
 }
 
 async function loadAdminData(){
